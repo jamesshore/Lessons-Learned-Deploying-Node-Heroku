@@ -44,19 +44,19 @@
 		child.kill();
 	};
 
-//	exports.test_getHomePage = function(test) {
-//		checkMarker(BASE_URL, "WeeWikiPaint home page", function(foundMarker) {
-//			test.ok(foundMarker, "should have found home page marker");
-//			test.done();
-//		});
-//	};
-//
-//	exports.test_get404Page = function(test) {
-//		checkMarker(BASE_URL + "/no-such-url", "WeeWikiPaint 404 page", function(foundMarker) {
-//			test.ok(foundMarker, "should have found 404 page marker");
-//			test.done();
-//		});
-//	};
+	exports.test_getHomePage = function(test) {
+		checkMarker(BASE_URL, "WeeWikiPaint home page", function(foundMarker) {
+			test.ok(foundMarker, "should have found home page marker");
+			test.done();
+		});
+	};
+
+	exports.test_get404Page = function(test) {
+		checkMarker(BASE_URL + "/no-such-url", "WeeWikiPaint 404 page", function(foundMarker) {
+			test.ok(foundMarker, "should have found 404 page marker");
+			test.done();
+		});
+	};
 
 	function checkMarker(url, marker, callback) {
 		var request = http.get(url);
