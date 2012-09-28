@@ -1,6 +1,7 @@
 // Copyright (c) 2012 Titanium I.T. LLC. All rights reserved. See LICENSE.txt for details.
 
 var BUILD_COMMAND = "./jake.sh";
+var DEPLOY_COMMANDS = [ "git push heroku master" ];
 
 /*global desc, task, jake, fail, complete */
 (function() {
@@ -10,92 +11,102 @@ var BUILD_COMMAND = "./jake.sh";
 		console.log("Jakefile to deploy application to Heroku. Use -T option to see targets.\n");
 	});
 
-	desc("Deploy to Heroku", function() {
-
+	desc("Deploy to Heroku");
+	task("release", ["git", "build"], function() {
+		shWithErrorHandler(DEPLOY_COMMANDS, complete, function() {
+			fail("Deploy failed.");
+		});
 	});
 
-
-	desc("Reset repository to last known-good integration. DESTRUCTIVE.");
-	task("reset", function(confirm) {
-		if (confirm !== "y") {
-			console.log(
-				"WARNING: This command will erase all your un-integrated work.\n" +
-				"To confirm, run using 'reset[y]'\n"
-			);
-			fail("Reset not confirmed");
-		}
-
-		sh([
-			"git clean -fd",                            // Remove extraneous files
-			"git fetch origin",                         // Get latest from integration machine
-			"git reset --hard origin/integration"       // Sync with latest position of integration branch
-		], complete);
-	}, {async: true});
-
-	desc("Get latest known-good code and merge it into current branch.");
-	task("pull", ["status"], function() {
-		sh([
-			"git pull origin integration"
-		], complete);
-	}, {async: true});
-
-	desc("Push commits to integration machine for validation.");
-	task("push", ["status"], function(branch) {
-		if (!branch) {
-			console.log(
-				"This command will push your code to the integration machine. Pass your\n" +
-				"branch name as a parameter (e.g., 'push[workstation_name]').\n"
-			);
-			fail("No branch provided");
-		}
-		sh([
-			"git push origin " + branch
-		], complete);
-	}, {async: true});
-
-	desc("Merge code into integration branch. INTEGRATION BOX ONLY.");
-	task("promote", ["status"], function(branch) {
-		if (!branch) {
-			console.log(
-				"This command will build your code and merge it into the integration\n" +
-				"branch. Pass your branch name as a parameter ('promote[workstation_name]').\n" +
-				"CAREFUL: This command must only be run on the master integration machine.\n"
-			);
-			fail("No branch provided");
-		}
-
-		function checkoutAndBuild(successCallback, failureCallback) {
-			shWithErrorHandler([
-				"git checkout " + branch,
-				"git merge integration --ff-only",   // make sure integration branch has already been merged
-				BUILD_COMMAND
-			], successCallback, failureCallback);
-		}
-		function afterSuccessfulBuild() {
-			sh([
-				"git checkout integration",
-				"git merge " + branch + " --no-ff --log"
-			], complete);
-		}
-		function afterFailedBuild() {
-			sh([
-				"git checkout integration"
-			], function() {
-				fail("Integration failed. Integration machine reset to known-good state.");
-				complete();
-			});
-		}
-
-		checkoutAndBuild(afterSuccessfulBuild, afterFailedBuild);
-	}, {async:true});
-
-	// Ensure there aren't any files that need to be checked in or ignored
-	task("status", function() {
+	// Ensure that Git status is clean--no files to be checked in or ignored
+	task("git", function() {
 		sh(["git status --porcelain"], function(stdout) {
-			if (stdout[0]) fail("Working directory contains files to commit or ignore.");
+			if (stdout[0]) fail("Cannot deploy until all files checked into git (or added to .gitignore).");
 			complete();
 		});
 	}, {async:true});
+
+	// Build the code and make sure it's clean
+	task("build", function() {
+		shWithErrorHandler([BUILD_COMMAND], complete, function() {
+			fail("Cannot deploy until build passes.");
+		});
+	}, {async:true});
+
+//
+//	desc("Reset repository to last known-good integration. DESTRUCTIVE.");
+//	task("reset", function(confirm) {
+//		if (confirm !== "y") {
+//			console.log(
+//				"WARNING: This command will erase all your un-integrated work.\n" +
+//				"To confirm, run using 'reset[y]'\n"
+//			);
+//			fail("Reset not confirmed");
+//		}
+//
+//		sh([
+//			"git clean -fd",                            // Remove extraneous files
+//			"git fetch origin",                         // Get latest from integration machine
+//			"git reset --hard origin/integration"       // Sync with latest position of integration branch
+//		], complete);
+//	}, {async: true});
+//
+//	desc("Get latest known-good code and merge it into current branch.");
+//	task("pull", ["status"], function() {
+//		sh([
+//			"git pull origin integration"
+//		], complete);
+//	}, {async: true});
+//
+//	desc("Push commits to integration machine for validation.");
+//	task("push", ["status"], function(branch) {
+//		if (!branch) {
+//			console.log(
+//				"This command will push your code to the integration machine. Pass your\n" +
+//				"branch name as a parameter (e.g., 'push[workstation_name]').\n"
+//			);
+//			fail("No branch provided");
+//		}
+//		sh([
+//			"git push origin " + branch
+//		], complete);
+//	}, {async: true});
+//
+//	desc("Merge code into integration branch. INTEGRATION BOX ONLY.");
+//	task("promote", ["status"], function(branch) {
+//		if (!branch) {
+//			console.log(
+//				"This command will build your code and merge it into the integration\n" +
+//				"branch. Pass your branch name as a parameter ('promote[workstation_name]').\n" +
+//				"CAREFUL: This command must only be run on the master integration machine.\n"
+//			);
+//			fail("No branch provided");
+//		}
+//
+//		function checkoutAndBuild(successCallback, failureCallback) {
+//			shWithErrorHandler([
+//				"git checkout " + branch,
+//				"git merge integration --ff-only",   // make sure integration branch has already been merged
+//				BUILD_COMMAND
+//			], successCallback, failureCallback);
+//		}
+//		function afterSuccessfulBuild() {
+//			sh([
+//				"git checkout integration",
+//				"git merge " + branch + " --no-ff --log"
+//			], complete);
+//		}
+//		function afterFailedBuild() {
+//			sh([
+//				"git checkout integration"
+//			], function() {
+//				fail("Integration failed. Integration machine reset to known-good state.");
+//				complete();
+//			});
+//		}
+//
+//		checkoutAndBuild(afterSuccessfulBuild, afterFailedBuild);
+//	}, {async:true});
 
 	function sh(commands, callback) {
 		shWithErrorHandler(commands, callback, function() {
