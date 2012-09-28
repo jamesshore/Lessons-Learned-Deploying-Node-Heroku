@@ -31,7 +31,7 @@ var http = require("http");
 		}
 		function failure() {
 			smokeTest(function(passed) {
-				if (passed) fail("Deploy failed; application still online.");
+				if (passed) fail("Deploy failed but application is still online.");
 				else fail("Deploy failed. APPLICATION OFFLINE! Run rollback target.");
 			});
 		}
