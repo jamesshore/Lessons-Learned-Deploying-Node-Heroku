@@ -6,7 +6,7 @@ var PRODUCTION_URL = "http://tdjs-ll5.herokuapp.com";
 var SMOKE_TEST_MARKER = "WeeWikiPaint home page";
 
 var DEPLOY_COMMANDS = [ "git push heroku master" ];
-//var ROLLBACK_COMMANDS = [ "" ];
+var ROLLBACK_COMMANDS = [ "heroku rollback" ];
 
 var http = require("http");
 
@@ -36,7 +36,30 @@ var http = require("http");
 			});
 		}
 
-		shWithErrorMessage(DEPLOY_COMMANDS, success, failure);
+		shWithErrorHandler(DEPLOY_COMMANDS, success, failure);
+	}, {async:true});
+
+	desc("Rollback to previous release");
+	task("rollback", function() {
+		function success() {
+			console.log("Rollback complete. Smoke testing release...");
+			smokeTest(function(passed) {
+				if (passed) {
+					console.log("Application online.");
+					complete();
+				}
+				else fail("APPLICATION STILL OFFLINE! Fix manually.");
+			});
+		}
+		function failure() {
+			console.log("Rollback failed. Smoke testing release...");
+			smokeTest(function(passed) {
+				if (passed) fail("Rollback failed but application is online.");
+				else fail("APPLICATION STILL OFFLINE! Fix manually.");
+			});
+		}
+
+		shWithErrorMessage(ROLLBACK_COMMANDS, success, failure);
 	}, {async:true});
 
 	// Ensure that Git status is clean--no files to be checked in or ignored
