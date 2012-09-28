@@ -3,13 +3,17 @@
 	"use strict";
 	var child_process = require("child_process");
 	var http = require("http");
+	var procfile = require("procfile");
+	var fs = require("fs");
 
-	var BASE_URL = "http://localhost:5000";
+	var PORT = "5000";
+	var BASE_URL = "http://localhost:" + PORT;
 
 	var child;
 
 	exports.setUp = function(done) {
-		child = child_process.spawn("node", ["src/server/weewikipaint.js", "5000"], { stdio: "pipe" });
+		var web = parseProcfile();
+		child = child_process.spawn(web.command, web.options, { stdio: "pipe" });
 		var stdout = "";
 
 		child.stdout.setEncoding("utf8");
@@ -20,6 +24,18 @@
 			}
 		});
 	};
+
+	function parseProcfile() {
+		var file = fs.readFileSync("Procfile", "utf8");
+		var web = procfile.parse(file).web;
+		web.options = web.options.map(function(element) {
+			if (element === "$PORT") {
+				return PORT;
+			}
+			else return element;
+		});
+		return web;
+	}
 
 	exports.tearDown = function(done) {
 		child.on("exit", function() {
