@@ -2,7 +2,7 @@
 /*global desc, task, jake, fail, complete */
 
 var BUILD_COMMAND = "./jake.sh";
-var PRODUCTION_URL = "http://tdjs-ll5.git";
+var PRODUCTION_URL = "http://tdjs-ll5.herokuapp.com";
 var SMOKE_TEST_MARKER = "WeeWikiPaint home page";
 
 var DEPLOY_COMMANDS = [ "git push heroku master" ];
@@ -20,14 +20,23 @@ var http = require("http");
 	desc("Deploy to Heroku");
 	task("release", ["build", "git"], function() {
 		function success() {
-			console.log("Checking release...");
-			checkMarker(PRODUCTION_URL, SMOKE_TEST_MARKER, function(foundMarker) {
-				if (foundMarker) console.log("Smoke test passed.");
-				else fail("Smoke test failed. Application offline! Run rollback target.");
+			console.log("Smoke testing release...");
+			smokeTest(function(passed) {
+				if (passed) {
+					console.log("Smoke test passed.");
+					complete();
+				}
+				else fail("Smoke test failed. APPLICATION OFFLINE! Run rollback target.");
+			});
+		}
+		function failure() {
+			smokeTest(function(passed) {
+				if (passed) fail("Deploy failed; application still online.");
+				else fail("Deploy failed. APPLICATION OFFLINE! Run rollback target.");
 			});
 		}
 
-		shWithErrorMessage(DEPLOY_COMMANDS, success, "Deploy failed.");
+		shWithErrorMessage(DEPLOY_COMMANDS, success, failure);
 	}, {async:true});
 
 	// Ensure that Git status is clean--no files to be checked in or ignored
@@ -161,8 +170,8 @@ var http = require("http");
 		process.run();
 	}
 
-	function checkMarker(url, marker, callback) {
-		var request = http.get(url);
+	function smokeTest(callback) {
+		var request = http.get(PRODUCTION_URL);
 		request.on("response", function(response) {
 			var data = "";
 			response.setEncoding("utf8");
@@ -171,7 +180,7 @@ var http = require("http");
 				data += chunk;
 			});
 			response.on("end", function() {
-				var foundMarker = data.indexOf(marker) !== -1;
+				var foundMarker = data.indexOf(SMOKE_TEST_MARKER) !== -1;
 				callback(foundMarker);
 			});
 		});
