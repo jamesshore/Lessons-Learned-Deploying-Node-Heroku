@@ -27,7 +27,7 @@ var http = require("http");
 			});
 		}
 
-		shWithErrorMessage(DEPLOY_COMMANDS, complete, "Deploy failed.");
+		shWithErrorMessage(DEPLOY_COMMANDS, success, "Deploy failed.");
 	}, {async:true});
 
 	// Ensure that Git status is clean--no files to be checked in or ignored
