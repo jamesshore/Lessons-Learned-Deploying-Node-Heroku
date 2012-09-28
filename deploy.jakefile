@@ -12,11 +12,9 @@ var DEPLOY_COMMANDS = [ "git push heroku master" ];
 	});
 
 	desc("Deploy to Heroku");
-	task("release", ["git", "build"], function() {
-		shWithErrorHandler(DEPLOY_COMMANDS, complete, function() {
-			fail("Deploy failed.");
-		});
-	});
+	task("release", ["build", "git"], function() {
+		shWithErrorMessage(DEPLOY_COMMANDS, complete, "Deploy failed.");
+	}, {async:true});
 
 	// Ensure that Git status is clean--no files to be checked in or ignored
 	task("git", function() {
@@ -28,9 +26,7 @@ var DEPLOY_COMMANDS = [ "git push heroku master" ];
 
 	// Build the code and make sure it's clean
 	task("build", function() {
-		shWithErrorHandler([BUILD_COMMAND], complete, function() {
-			fail("Cannot deploy until build passes.");
-		});
+		shWithErrorMessage([BUILD_COMMAND], complete, "Cannot deploy until build passes.");
 	}, {async:true});
 
 //
@@ -109,8 +105,12 @@ var DEPLOY_COMMANDS = [ "git push heroku master" ];
 //	}, {async:true});
 
 	function sh(commands, callback) {
+		shWithErrorMessage(commands, callback, "shell command exited with error code");
+	}
+
+	function shWithErrorMessage(commands, callback, errorMessage) {
 		shWithErrorHandler(commands, callback, function() {
-			fail("shell command exited with error code");
+			fail(errorMessage);
 		});
 	}
 
