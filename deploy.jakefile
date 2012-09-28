@@ -14,10 +14,10 @@ var http = require("http");
 	"use strict";
 
 	task("default", function() {
-		console.log("This Jakefile deploy application to Heroku. Use -T option to see targets.\n");
+		console.log("This Jakefile deploys the application. Use -T option to see targets.\n");
 	});
 
-	desc("Deploy to Heroku");
+	desc("Deploy to production");
 	task("release", ["build", "git"], function() {
 		function success() {
 			console.log("Smoke testing release...");
@@ -62,7 +62,7 @@ var http = require("http");
 		shWithErrorMessage(ROLLBACK_COMMANDS, success, failure);
 	}, {async:true});
 
-	// Ensure that Git status is clean--no files to be checked in or ignored
+	// Ensure that Git status is clean
 	task("git", function() {
 		sh(["git status --porcelain"], function(stdout) {
 			if (stdout[0]) fail("Cannot deploy until all files checked into git (or added to .gitignore).");
@@ -70,85 +70,26 @@ var http = require("http");
 		});
 	}, {async:true});
 
-	// Build the code and make sure it's clean
+	// Make sure build is clean
 	task("build", function() {
 		shWithErrorMessage([BUILD_COMMAND], complete, "Cannot deploy until build passes.");
 	}, {async:true});
 
-//
-//	desc("Reset repository to last known-good integration. DESTRUCTIVE.");
-//	task("reset", function(confirm) {
-//		if (confirm !== "y") {
-//			console.log(
-//				"WARNING: This command will erase all your un-integrated work.\n" +
-//				"To confirm, run using 'reset[y]'\n"
-//			);
-//			fail("Reset not confirmed");
-//		}
-//
-//		sh([
-//			"git clean -fd",                            // Remove extraneous files
-//			"git fetch origin",                         // Get latest from integration machine
-//			"git reset --hard origin/integration"       // Sync with latest position of integration branch
-//		], complete);
-//	}, {async: true});
-//
-//	desc("Get latest known-good code and merge it into current branch.");
-//	task("pull", ["status"], function() {
-//		sh([
-//			"git pull origin integration"
-//		], complete);
-//	}, {async: true});
-//
-//	desc("Push commits to integration machine for validation.");
-//	task("push", ["status"], function(branch) {
-//		if (!branch) {
-//			console.log(
-//				"This command will push your code to the integration machine. Pass your\n" +
-//				"branch name as a parameter (e.g., 'push[workstation_name]').\n"
-//			);
-//			fail("No branch provided");
-//		}
-//		sh([
-//			"git push origin " + branch
-//		], complete);
-//	}, {async: true});
-//
-//	desc("Merge code into integration branch. INTEGRATION BOX ONLY.");
-//	task("promote", ["status"], function(branch) {
-//		if (!branch) {
-//			console.log(
-//				"This command will build your code and merge it into the integration\n" +
-//				"branch. Pass your branch name as a parameter ('promote[workstation_name]').\n" +
-//				"CAREFUL: This command must only be run on the master integration machine.\n"
-//			);
-//			fail("No branch provided");
-//		}
-//
-//		function checkoutAndBuild(successCallback, failureCallback) {
-//			shWithErrorHandler([
-//				"git checkout " + branch,
-//				"git merge integration --ff-only",   // make sure integration branch has already been merged
-//				BUILD_COMMAND
-//			], successCallback, failureCallback);
-//		}
-//		function afterSuccessfulBuild() {
-//			sh([
-//				"git checkout integration",
-//				"git merge " + branch + " --no-ff --log"
-//			], complete);
-//		}
-//		function afterFailedBuild() {
-//			sh([
-//				"git checkout integration"
-//			], function() {
-//				fail("Integration failed. Integration machine reset to known-good state.");
-//				complete();
-//			});
-//		}
-//
-//		checkoutAndBuild(afterSuccessfulBuild, afterFailedBuild);
-//	}, {async:true});
+	function smokeTest(callback) {
+		var request = http.get(PRODUCTION_URL);
+		request.on("response", function(response) {
+			var data = "";
+			response.setEncoding("utf8");
+
+			response.on("data", function(chunk) {
+				data += chunk;
+			});
+			response.on("end", function() {
+				var foundMarker = data.indexOf(SMOKE_TEST_MARKER) !== -1;
+				callback(foundMarker);
+			});
+		});
+	}
 
 	function sh(commands, callback) {
 		shWithErrorMessage(commands, callback, "shell command exited with error code");
@@ -191,21 +132,5 @@ var http = require("http");
 
 		console.log("> " + oneCommand);
 		process.run();
-	}
-
-	function smokeTest(callback) {
-		var request = http.get(PRODUCTION_URL);
-		request.on("response", function(response) {
-			var data = "";
-			response.setEncoding("utf8");
-
-			response.on("data", function(chunk) {
-				data += chunk;
-			});
-			response.on("end", function() {
-				var foundMarker = data.indexOf(SMOKE_TEST_MARKER) !== -1;
-				callback(foundMarker);
-			});
-		});
 	}
 }());
