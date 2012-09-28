@@ -23,7 +23,7 @@ var http = require("http");
 			console.log("Smoke testing release...");
 			smokeTest(function(passed) {
 				if (passed) {
-					console.log("Smoke test passed.");
+					console.log("Smoke test passed. Application successfully deployed.");
 					complete();
 				}
 				else fail("Smoke test failed. APPLICATION OFFLINE! Run rollback target.");
