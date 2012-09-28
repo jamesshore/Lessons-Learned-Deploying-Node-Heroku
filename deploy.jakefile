@@ -41,6 +41,7 @@ var http = require("http");
 
 	desc("Rollback to previous release");
 	task("rollback", function() {
+		
 		function success() {
 			console.log("Rollback complete. Smoke testing release...");
 			smokeTest(function(passed) {
